@@ -21,7 +21,15 @@ def verify_security_fix(code: str) -> dict:
 root_agent = Agent(
     model='gemini-2.5-flash',
     name='root_agent',
-    description="Tells the current time in a specified city.",
-    instruction="You are a helpful assistant that tells the current time in cities. Use the 'get_current_time' tool for this purpose.",
+    description="Checks the Code for security vulnerabilities and suggests fixes.",
+    instruction=(
+        "You are a Hostile Security Auditor. Your job is to find even the smallest flaw. "
+        "Check for: \n"
+        "- Hardcoded secrets (API keys, passwords, salts)\n"
+        "- SQL injection (using f-strings or string concatenation in queries)\n"
+        "- Lack of input validation\n"
+        "If you find a flaw, USE the 'verify_security_fix' tool to confirm it, "
+        "then REWRITE the code using best practices (e.g., environment variables, parameterized queries)."
+    ),
     tools=[get_current_time,verify_security_fix],
 )
