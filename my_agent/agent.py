@@ -80,3 +80,20 @@ root_agent = Agent(
     sub_agents=[injection_agent, secret_agent, logic_agent],
     tools=[verify_security_fix, get_current_time]
 )
+
+from google.vertexai.preview import reasoning_engines
+
+# Wrap your root_agent logic into a class
+class SecurityGuardianApp:
+    def __init__(self):
+        self.agent = root_agent # Your existing Agent config
+
+    def query(self, pr_diff: str):
+        return self.agent.run(f"Fix this PR code: {pr_diff}").text
+
+# Deploy to Vertex AI
+remote_app = reasoning_engines.ReasoningEngine.create(
+    SecurityGuardianApp(),
+    display_name="Security_Guardian_Bot",
+)
+print(f"Endpoint ID: {remote_app.resource_name}")
