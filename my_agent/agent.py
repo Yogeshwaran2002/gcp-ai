@@ -112,3 +112,28 @@ if __name__ == "__main__":
     
     print(f"✅ Deployment successful!")
     print(f"📍 Endpoint ID: {remote_app.resource_name}")
+
+    import vertexai
+from vertexai.preview import reasoning_engines
+
+# 1. Initialize with your project and staging bucket
+vertexai.init(
+    project="ai-connect-sap26blr-315",
+    location="us-central1",
+    staging_bucket="gs://guardian-bot-staging-315"
+)
+
+# 2. Deploy the Reasoning Engine
+print("🛠️ Deploying to Vertex AI...")
+remote_app = reasoning_engines.ReasoningEngine.create(
+    SecurityGuardianApp(),  # Your class from the previous step
+    display_name="Shift_Left_Guardian_v1",
+    description="Multi-agent security auditor for GitHub PRs",
+    requirements=[
+        "google-cloud-aiplatform[adk,agent_engines]",
+        "cloudpickle==3.0.0"
+    ],
+)
+
+print(f"✅ Deployment Complete!")
+print(f"📍 Resource ID: {remote_app.resource_name}")
