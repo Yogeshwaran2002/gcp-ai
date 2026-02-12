@@ -19,8 +19,6 @@ def logic_validator(code: str) -> dict:
         return {"status": "FAIL", "issue": "Dangerous operation missing authentication decorator."}
     return {"status": "PASS"}
 
-from google.adk.agents.llm_agent import Agent
-
 # Mock tool implementation
 def get_current_time(city: str) -> dict:
     """Returns the current time in a specified city."""
@@ -37,31 +35,48 @@ def verify_security_fix(code: str) -> dict:
         "status": "SECURE" if not issues else "VULNERABLE",
         "details": issues
     }
-# 1. The Scout (Scanner)
-scout_agent = Agent(
-    model='gemini-2.5-flash',
-    name='scout_agent',
-    instruction="Audit code for secrets and injection flaws. Use scanners to confirm. Report issues only.",
-    tools=[secret_scanner, injection_scanner]
+
+from google.adk.agents.llm_agent import Agent
+
+# Specialist 1: The Injection Hunter
+injection_agent = Agent(
+    model='gemini-2.5-flash', # Use the stable GA model
+    name='injection_hunter',
+    description="Specialist in detecting SQL Injection, XSS, and command injection.",
+    instruction="Analyze the provided code for injection flaws. If you find one, describe the risk clearly.",
+    tools=[injection_scanner]
 )
 
-# 2. The Auditor (Logic)
-auditor_agent = Agent(
+# Specialist 2: The Secret Scout
+secret_agent = Agent(
     model='gemini-2.5-flash',
-    name='auditor_agent',
-    instruction="Analyze code for missing authentication or broken logic. Use logic_validator.",
+    name='secret_scout',
+    description="Specialist in identifying hardcoded secrets, API keys, and credentials.",
+    instruction="Scan the code for hardcoded strings that look like secrets. Use the scanner tool to verify.",
+    tools=[secret_scanner]
+)
+
+# Specialist 3: The Logic Auditor
+logic_agent = Agent(
+    model='gemini-2.5-flash',
+    name='logic_auditor',
+    description="Specialist in finding business logic flaws and missing authentication.",
+    instruction="Look for dangerous functions missing security decorators like @login_required.",
     tools=[logic_validator]
 )
-
-# 3. The Root Guardian (The "YOLO" Fixer)
 root_agent = Agent(
     model='gemini-2.5-flash',
-    name='root_agent',
-    description="Product-grade Security Orchestrator.",
+    name='root_guardian',
+    description="Lead Security Architect orchestrating full code reviews.",
     instruction=(
-        "You are the Lead Security Engineer. Coordinate the Scout and Auditor. "
-        "If any issues are found, REWRITE the code to be 100% secure. "
-        "Your output must be a valid Python block that can be deployed immediately."
+        "You are the Lead Security Architect. Your mission: "
+        "1. Delegate the code review to 'injection_hunter', 'secret_scout', and 'logic_auditor'. "
+        "2. Synthesize all their findings into a final report. "
+        "3. Use 'verify_security_fix' to double-check everything. "
+        "4. Output ONLY the fully rewritten, 100% secure Python code block. "
+        "DO NOT leave any original vulnerabilities in your final output."
     ),
-    agents=[scout_agent, auditor_agent] # Sub-agents for modularity
+    # CORRECTED PARAMETER: Use 'sub_agents' instead of 'agents'
+    sub_agents=[injection_agent, secret_agent, logic_agent],
+    tools=[verify_security_fix, get_current_time]
 )
