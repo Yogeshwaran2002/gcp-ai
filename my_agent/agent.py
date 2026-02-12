@@ -1,8 +1,17 @@
 import os
+import vertexai
+from vertexai.preview import reasoning_engines
+from google.adk.agents.llm_agent import Agent
+
+# 1. Initialize Vertex AI (Update with your project details)
+PROJECT_ID = "ai-connect-sap26blr-315"
+LOCATION = "us-central1"
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+# --- DETERMINISTIC TOOLS ---
 
 def secret_scanner(code: str) -> dict:
     """Detects high-entropy strings and hardcoded credentials."""
-    # Logic to look for patterns like 'AIza...', 'sk_live...', etc.
     if "api_key" in code.lower() and "os.getenv" not in code:
         return {"status": "FAIL", "issue": "Hardcoded API Key found."}
     return {"status": "PASS"}
@@ -19,10 +28,6 @@ def logic_validator(code: str) -> dict:
         return {"status": "FAIL", "issue": "Dangerous operation missing authentication decorator."}
     return {"status": "PASS"}
 
-# Mock tool implementation
-def get_current_time(city: str) -> dict:
-    """Returns the current time in a specified city."""
-    return {"status": "success", "city": city, "time": "10:30 AM"}
 def verify_security_fix(code: str) -> dict:
     """Verifies if the code still contains common vulnerabilities."""
     issues = []
@@ -30,70 +35,80 @@ def verify_security_fix(code: str) -> dict:
         issues.append("SQL Injection Risk: Use parameterized queries.")
     if "api_key =" in code:
         issues.append("Hardcoded Secret: Use environment variables.")
-    
     return {
         "status": "SECURE" if not issues else "VULNERABLE",
         "details": issues
     }
 
-from google.adk.agents.llm_agent import Agent
+# --- SPECIALIZED AGENTS ---
 
-# Specialist 1: The Injection Hunter
 injection_agent = Agent(
-    model='gemini-2.0-flash', # Use the stable GA model
+    model='gemini-2.0-flash',
     name='injection_hunter',
-    description="Specialist in detecting SQL Injection, XSS, and command injection.",
-    instruction="Analyze the provided code for injection flaws. If you find one, describe the risk clearly.",
+    description="Specialist in detecting SQL Injection and XSS.",
+    instruction="Analyze code for injection flaws. Report risks clearly.",
     tools=[injection_scanner]
 )
 
-# Specialist 2: The Secret Scout
 secret_agent = Agent(
     model='gemini-2.0-flash',
     name='secret_scout',
-    description="Specialist in identifying hardcoded secrets, API keys, and credentials.",
-    instruction="Scan the code for hardcoded strings that look like secrets. Use the scanner tool to verify.",
+    description="Specialist in identifying hardcoded secrets and API keys.",
+    instruction="Scan for hardcoded secrets. Use scanner to verify.",
     tools=[secret_scanner]
 )
 
-# Specialist 3: The Logic Auditor
 logic_agent = Agent(
     model='gemini-2.0-flash',
     name='logic_auditor',
-    description="Specialist in finding business logic flaws and missing authentication.",
-    instruction="Look for dangerous functions missing security decorators like @login_required.",
+    description="Specialist in finding business logic and auth flaws.",
+    instruction="Check for missing security decorators like @login_required.",
     tools=[logic_validator]
 )
+
+# --- ROOT ORCHESTRATOR ---
+
 root_agent = Agent(
     model='gemini-2.0-flash',
     name='root_guardian',
-    description="Lead Security Architect orchestrating full code reviews.",
+    description="Lead Security Architect orchestrating reviews.",
     instruction=(
-        "You are the Lead Security Architect. Your mission: "
-        "1. Delegate the code review to 'injection_hunter', 'secret_scout', and 'logic_auditor'. "
-        "2. Synthesize all their findings into a final report. "
-        "3. Use 'verify_security_fix' to double-check everything. "
-        "4. Output ONLY the fully rewritten, 100% secure Python code block. "
-        "DO NOT leave any original vulnerabilities in your final output."
+        "You are the Lead Security Architect. You MUST: "
+        "1. Delegate the audit to 'injection_hunter', 'secret_scout', and 'logic_auditor'. "
+        "2. Synthesize findings and rewrite the code to be 100% secure. "
+        "3. Run 'verify_security_fix' on your own final code before finishing. "
+        "Output ONLY the secure Python code block."
     ),
-    # CORRECTED PARAMETER: Use 'sub_agents' instead of 'agents'
     sub_agents=[injection_agent, secret_agent, logic_agent],
-    tools=[verify_security_fix, get_current_time]
+    tools=[verify_security_fix]
 )
 
-from google.vertexai.preview import reasoning_engines
+# --- DEPLOYMENT WRAPPER ---
 
-# Wrap your root_agent logic into a class
 class SecurityGuardianApp:
     def __init__(self):
-        self.agent = root_agent # Your existing Agent config
+        # We assign the agent here so it's packaged during deployment
+        self.agent = root_agent 
 
     def query(self, pr_diff: str):
-        return self.agent.run(f"Fix this PR code: {pr_diff}").text
+        """Method called by the GitHub bot to process code changes."""
+        response = self.agent.run(f"Audit and fix this PR code:\n{pr_diff}")
+        return response.text
 
-# Deploy to Vertex AI
-remote_app = reasoning_engines.ReasoningEngine.create(
-    SecurityGuardianApp(),
-    display_name="Security_Guardian_Bot",
-)
-print(f"Endpoint ID: {remote_app.resource_name}")
+# --- EXECUTION / DEPLOYMENT ---
+
+if __name__ == "__main__":
+    print("🚀 Starting deployment to Vertex AI Reasoning Engine...")
+    
+    # This command packages your code, tools, and agents into a managed endpoint
+    remote_app = reasoning_engines.ReasoningEngine.create(
+        SecurityGuardianApp(),
+        display_name="Security_Guardian_Bot",
+        # Requirements ensures the cloud environment has ADK installed
+        requirements=[
+            "google-cloud-aiplatform[adk,agent_engines]",
+        ]
+    )
+    
+    print(f"✅ Deployment successful!")
+    print(f"📍 Endpoint ID: {remote_app.resource_name}")
