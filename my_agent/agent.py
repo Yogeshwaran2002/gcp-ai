@@ -12,9 +12,9 @@ def verify_security_fix(code: str) -> dict:
         "status": "SECURE" if not issues else "VULNERABLE",
         "details": issues
     }
-security_guardian = Agent(
+root_agent  = Agent(
     model='gemini-2-flash', # Your working model!
-    name='security_guardian',
+    name='root_agent ',
     description="Analyzes code for vulnerabilities and provides production-ready secure rewrites.",
     instruction=(
         "You are an automated Security Guardian in a CI/CD pipeline. "
