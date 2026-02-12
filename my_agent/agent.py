@@ -14,7 +14,7 @@ def verify_security_fix(code: str) -> dict:
     }
 root_agent  = Agent(
     model='gemini-2-flash', # Your working model!
-    name='root_agent ',
+    name='root_agent',
     description="Analyzes code for vulnerabilities and provides production-ready secure rewrites.",
     instruction=(
         "You are an automated Security Guardian in a CI/CD pipeline. "
