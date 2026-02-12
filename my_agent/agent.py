@@ -40,7 +40,7 @@ from google.adk.agents.llm_agent import Agent
 
 # Specialist 1: The Injection Hunter
 injection_agent = Agent(
-    model='gemini-2.5-flash', # Use the stable GA model
+    model='gemini-2.0-flash', # Use the stable GA model
     name='injection_hunter',
     description="Specialist in detecting SQL Injection, XSS, and command injection.",
     instruction="Analyze the provided code for injection flaws. If you find one, describe the risk clearly.",
@@ -49,7 +49,7 @@ injection_agent = Agent(
 
 # Specialist 2: The Secret Scout
 secret_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.0-flash',
     name='secret_scout',
     description="Specialist in identifying hardcoded secrets, API keys, and credentials.",
     instruction="Scan the code for hardcoded strings that look like secrets. Use the scanner tool to verify.",
@@ -58,14 +58,14 @@ secret_agent = Agent(
 
 # Specialist 3: The Logic Auditor
 logic_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.0-flash',
     name='logic_auditor',
     description="Specialist in finding business logic flaws and missing authentication.",
     instruction="Look for dangerous functions missing security decorators like @login_required.",
     tools=[logic_validator]
 )
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.0-flash',
     name='root_guardian',
     description="Lead Security Architect orchestrating full code reviews.",
     instruction=(
